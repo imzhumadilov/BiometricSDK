@@ -66,7 +66,6 @@ final class WebBioSdkViewController: UIViewController {
 extension WebBioSdkViewController: WKNavigationDelegate {
 
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
-        print(webView.url?.absoluteString)
         if let urlString = webView.url?.absoluteString, urlString.contains("test-ok") {
             self.dismiss(animated: true)
             self.delegate?.provideResult(success: true)
