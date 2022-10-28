@@ -23,7 +23,8 @@ final class WebBioSdkViewController: UIViewController {
     }()
     
     // MARK: - Props
-    private let url = "https://test.biometric.kz/test/"
+    private var url = "https://test.biometric.kz/"
+    private var apiKey: String = ""
     public var delegate: WebBioSdkDelegate?
     
     // MARK: - Lifecycle
@@ -41,8 +42,10 @@ final class WebBioSdkViewController: UIViewController {
     
     // MARK: - Setup functions
     private func setupComponents() {
-        guard let url = URL(string: self.url) else { return }
+        var url = self.url
+        if !self.apiKey.isEmpty { url = self.url + "?api_key=" + self.apiKey }
         
+        guard let url = URL(string: url) else { return }
         self.webView.load(URLRequest(url: url))
         self.webView.navigationDelegate = self
     }
