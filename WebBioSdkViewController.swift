@@ -10,6 +10,7 @@ import WebKit
 
 protocol WebBioSdkDelegate {
     func provideResult(success: Bool)
+    func provideSessionData(data: Data?, error: Error?)
 }
 
 final class WebBioSdkViewController: UIViewController {
@@ -23,7 +24,7 @@ final class WebBioSdkViewController: UIViewController {
     }()
     
     // MARK: - Props
-    private var url = "https://test.biometric.kz/"
+    private var url = "https://dev.biometric.kz"
     private var apiKey: String = ""
     public var delegate: WebBioSdkDelegate?
     
@@ -43,11 +44,12 @@ final class WebBioSdkViewController: UIViewController {
     // MARK: - Setup functions
     private func setupComponents() {
         var url = self.url
-        if !self.apiKey.isEmpty { url = self.url + "?api_key=" + self.apiKey }
+        if !self.apiKey.isEmpty { url = self.url + "/short" + "?api_key=" + self.apiKey }
         
         guard let url = URL(string: url) else { return }
         self.webView.load(URLRequest(url: url))
         self.webView.navigationDelegate = self
+        self.webView.uiDelegate = self
     }
     
     private func applyStyles() {
@@ -67,8 +69,23 @@ final class WebBioSdkViewController: UIViewController {
 
 // MARK: - WKNavigationDelegate
 extension WebBioSdkViewController: WKNavigationDelegate {
-
+    
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+        
+        if let urlString = webView.url?.absoluteString,
+           let urlComponents = URLComponents(string: urlString),
+           let value = urlComponents.queryItems?.first(where: { $0.name == "session" })?.value,
+           let url = URL(string: self.url + "/main/session/" + value) {
+            URLSession.shared.dataTask(with: url) { data, response, error in
+                if let statusCode = (response as? HTTPURLResponse)?.statusCode,
+                   statusCode < 400, let data = data {
+                    self.delegate?.provideSessionData(data: data, error: nil)
+                } else {
+                    self.delegate?.provideSessionData(data: nil, error: error)
+                }
+            }.resume()
+        }
+        
         if let urlString = webView.url?.absoluteString, urlString.contains("test-ok") {
             self.dismiss(animated: true)
             self.delegate?.provideResult(success: true)
@@ -76,5 +93,13 @@ extension WebBioSdkViewController: WKNavigationDelegate {
         } else if let urlString = webView.url?.absoluteString, urlString.contains("test-fail") {
             self.delegate?.provideResult(success: false)
         }
+    }
+}
+
+
+// MARK: - WKUIDelegate
+extension WebBioSdkViewController: WKUIDelegate {
+    func webView(_ webView: WKWebView, runJavaScriptConfirmPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo) async -> Bool {
+        return true
     }
 }
