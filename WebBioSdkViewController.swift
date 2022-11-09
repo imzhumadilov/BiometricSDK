@@ -10,7 +10,7 @@ import WebKit
 
 protocol WebBioSdkDelegate {
     func provideResult(success: Bool)
-    func provideSessionData(data: Data?, error: Error?)
+    func provideSessionData(data: Data?, dict: [String: Any]?, error: Error?)
 }
 
 final class WebBioSdkViewController: UIViewController {
@@ -44,7 +44,7 @@ final class WebBioSdkViewController: UIViewController {
     // MARK: - Setup functions
     private func setupComponents() {
         var url = self.url
-        if !self.apiKey.isEmpty { url = self.url + "/short" + "?api_key=" + self.apiKey }
+        if !self.apiKey.isEmpty { url = self.url + "/short" + "?api_key=" + self.apiKey + "&webview=true" }
         
         guard let url = URL(string: url) else { return }
         self.webView.load(URLRequest(url: url))
@@ -75,13 +75,22 @@ extension WebBioSdkViewController: WKNavigationDelegate {
         if let urlString = webView.url?.absoluteString,
            let urlComponents = URLComponents(string: urlString),
            let value = urlComponents.queryItems?.first(where: { $0.name == "session" })?.value,
-           let url = URL(string: self.url + "/main/session/" + value) {
+           let url = URL(string: self.url + "/v1/main/session/" + value + "/") {
+            
             URLSession.shared.dataTask(with: url) { data, response, error in
                 if let statusCode = (response as? HTTPURLResponse)?.statusCode,
                    statusCode < 400, let data = data {
-                    self.delegate?.provideSessionData(data: data, error: nil)
+                    do {
+                        let jsonData = try JSONSerialization.jsonObject(with: data, options: [])
+                        let json = jsonData as? [String: Any]
+                        self.delegate?.provideSessionData(data: data, dict: json, error: nil)
+                    } catch let error {
+                        self.delegate?.provideSessionData(data: nil, dict: nil, error: error)
+                    }
+                } else if let data = data {
+                    self.delegate?.provideSessionData(data: data, dict: nil, error: nil)
                 } else {
-                    self.delegate?.provideSessionData(data: nil, error: error)
+                    self.delegate?.provideSessionData(data: nil, dict: nil, error: error)
                 }
             }.resume()
         }
