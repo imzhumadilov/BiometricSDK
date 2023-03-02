@@ -8,9 +8,22 @@
 import UIKit
 import WebKit
 
-protocol WebBioSdkDelegate {
+protocol WebBioSdkDelegate: AnyObject {
     func provideResult(success: Bool)
     func provideSessionData(data: Data?, dict: [String: Any]?, error: Error?)
+    func simulatorStarted()
+    func deviceStarted()
+    func screenRecordingStart()
+    func screenRecordingFinish()
+}
+
+extension WebBioSdkDelegate {
+    func provideResult(success: Bool) { }
+    func provideSessionData(data: Data?, dict: [String: Any]?, error: Error?) { }
+    func simulatorStarted() { }
+    func deviceStarted() { }
+    func screenRecordingStart() { }
+    func screenRecordingFinish() { }
 }
 
 final class WebBioSdkViewController: UIViewController {
@@ -24,7 +37,7 @@ final class WebBioSdkViewController: UIViewController {
     }()
     
     // MARK: - Props
-    private var url = "https://dev.biometric.kz"
+    private var url = "https://test.biometric.kz/demo/short"
     private var apiKey: String = ""
     public var delegate: WebBioSdkDelegate?
     
@@ -39,6 +52,12 @@ final class WebBioSdkViewController: UIViewController {
     
     override func viewDidLayoutSubviews() {
         self.applyStyles()
+    }
+    
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        self.detectDevice()
+        self.detectScreenRecording()
     }
     
     // MARK: - Setup functions
@@ -65,6 +84,17 @@ final class WebBioSdkViewController: UIViewController {
     }
     
     // MARK: - Module functions
+    private func detectDevice() {
+        #if targetEnvironment(simulator)
+            self.delegate?.simulatorStarted()
+        #else
+            self.delegate?.deviceStarted()
+        #endif
+    }
+    
+    private func detectScreenRecording() {
+        ScreenRecordingService.shared.configureDetecting(delegate: self)
+    }
 }
 
 // MARK: - WKNavigationDelegate
@@ -110,5 +140,18 @@ extension WebBioSdkViewController: WKNavigationDelegate {
 extension WebBioSdkViewController: WKUIDelegate {
     func webView(_ webView: WKWebView, runJavaScriptConfirmPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo) async -> Bool {
         return true
+    }
+}
+
+// MARK: - ScreenRecordingServiceDelegate
+extension WebBioSdkViewController: ScreenRecordingServiceDelegate {
+    
+    func screenRecordingStart() {
+        self.delegate?.screenRecordingStart()
+        self.dismiss(animated: true)
+    }
+    
+    func screenRecordingFinish() {
+        self.delegate?.screenRecordingFinish()
     }
 }
