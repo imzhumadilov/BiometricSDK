@@ -87,6 +87,7 @@ final class WebBioSdkViewController: UIViewController {
     private func detectDevice() {
         #if targetEnvironment(simulator)
             self.delegate?.simulatorStarted()
+            self.dismiss(animated: true)
         #else
             self.delegate?.deviceStarted()
         #endif
